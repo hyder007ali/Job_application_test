@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://unpkg.com/vue@next"></script>
+    <title>Vue.js App</title>
+</head>
+<body>
+
+    <div id="app">
+        <div id="title">
+            <h1>[[title]]</h1>
+        </div>
+        <div style="width: 80%; margin:auto">
+            <div id="search">
+                <input type="text" style="margin-right:5px;" placeholder="Enter name..." v-model="input" v-on:keyup.enter="searchData">
+                <button type="button" v-on:click="searchData"><b>Search</b></button>
+            </div>
+            <div id="navButtons" >
+                <button style="float: right;width: 50px;" v-on:click="nextRows"><b>></b></button>
+                <button style="float: right;margin-right: 10px;width: 50px;" v-on:click="previousRows"><b><</b></button>
+            </div>
+        </div>
+        <br> <br>
+        
+        <table v-if="showTable">
+            <tr>
+                <td><b>ID</b></td>
+                <td><b>Name</b></td>
+                <td><b>Address</b></td>
+                <td><b>Country</b></td>
+                <td><b>Credit Limit</b></td>
+            </tr>
+            <tr v-for="i in rows">
+                <td v-for="j in columns" v-if="i<=20" v-on:click="showDetails(j,result[i-1+rowsCompleted])" @mouseover="doHighlight" @mouseleave="removeHighlight">
+                    [[ result[i-1+rowsCompleted][j-1] ]]
+                </td>
+            </tr>
+        </table>
+        
+        <div v-if="showDetailsView">
+            <table>
+                <tr>
+                    <td><b>Customer Number</b></td>
+                    <td><b>Customer Name</b></td>
+                    <td><b>Contact Last Name</b></td>
+                    <td><b>Contact First Name</b></td>
+                    <td><b>Phone</b></td>
+                    <td><b>Address Line 1</b></td>
+                    <td><b>Address Line 2</b></td>
+                    <td><b>City</b></td>
+                    <td><b>State</b></td>
+                    <td><b>postalCode</b></td>
+                    <td><b>Country</b></td>
+                    <td><b>SalesRepEmployee Number</b></td>
+                    <td><b>Credit Limit</b></td>
+                </tr>
+                <tr v-for="i in detailRows">
+                    <td v-for="j in detailColumns">
+                        [[ detailResult[i-1][j-1] ]]
+                    </td>
+                </tr>
+            </table>
+            <div style="width: 80%; margin: auto; margin-top: 10px;">
+                <div style="width: 100%; height: 50px;">
+                    <p style="float: left;">Update First Name: </p>
+                    <input type="text" style="float:left; margin-left: 5px; margin-top: 12px;" v-model="FnameUpdate">
+                </div>
+                <div style="width: 100%; height: 50px;">
+                    <p style="float: left;">Update Last Name: </p>
+                    <input type="text" style="float:left; margin-left: 7px; margin-top: 12px;" v-model="LnameUpdate">
+                </div>
+                <button style="margin-left: 100px; margin-top: 12px;" v-on:click="updateName"><b>Update</b></button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const app = Vue.createApp({
+            compilerOptions: {
+                delimiters: ["[[", "]]"]
+            },
+            data: function(){
+                return {
+                    title: 'Customer Details',
+                    showTable: false,
+                    result: [],
+                    rows: 0,
+                    columns: 0,
+                    rowsCompleted: 0,
+                    input:"",
+                    showDetailsView: false,
+                    detailResult: [],
+                    detailRows: 0,
+                    detailColumns: 0,
+                    FnameUpdate: "",
+                    LnameUpdate: "",
+                }
+            },
+            methods: {
+                searchData: function (event) {
+                    input = this.input
+                    if (input=="") {
+                        input = "showalldata"
+                    }
+                    fetch(`${window.origin}/endpoint1/${input}`)
+                    .then(response => {
+                        if (response.status !== 200) {
+                            console.log('Response failed. ')
+                            return ;
+                        }
+                        response.json().then (data => {
+                            this.result = data
+                            this.rows = data.length
+                            this.columns = data[0].length
+                            this.rowsCompleted = 0
+                        })
+                    })
+                    this.showDetailsView=false
+                    this.showTable = true
+                },
+                nextRows: function (event) {
+                    if (this.showDetailsView==false) {
+                        if (this.rows > 20) {
+                            this.rowsCompleted = this.rowsCompleted + 20
+                            this.rows = this.rows - 20
+                            console.log(this.result[20])
+                        }
+                    }
+                },
+                previousRows: function(event) {
+                    if (this.showDetailsView==false) {
+                        if (this.rowsCompleted>0) {
+                            this.rowsCompleted = this.rowsCompleted - 20
+                            this.rows = this.rows + 20
+                        }
+                        else {
+                            this.input = ""
+                            this.searchData()
+                        }   
+                    }
+                    else {
+                        this.showDetailsView = false
+                        this.showTable = true
+                    }
+                },
+                showDetails: function(column, rowData) {
+                    if (column==2) {
+                        fetch(`${window.origin}/endpoint2/${rowData[0]}`)
+                            .then(response => {
+                                if (response.status !== 200) {
+                                    console.log('Response failed.')
+                                    return ;
+                                }
+                                response.json().then (data => {
+                                    console.log(data)
+                                    this.detailResult = data
+                                    this.detailRows = data.length
+                                    this.detailColumns = data[0].length
+                                })
+                            })
+                        this.showTable = false
+                        this.showDetailsView = true 
+                    }
+                },
+                doHighlight: function () {
+                    if (event.target.cellIndex==1) {
+                        event.target.className = "highlight"
+                    }
+                },
+                removeHighlight: function () {
+                    if (event.target.cellIndex==1 && event.target.className == "highlight") {
+                        event.target.className = ""
+                    }
+                },
+                updateName: function () {
+                    this.FnameUpdate = this.FnameUpdate.trim()
+                    this.LnameUpdate = this.LnameUpdate.trim()
+                    nameUpdate = {
+                        firstName: this.FnameUpdate, 
+                        lastName: this.LnameUpdate
+                    }
+                    if (this.FnameUpdate!="" || this.LnameUpdate!=""){
+                        const data = { 
+                            ID: this.detailResult[0][0],
+                            Update: nameUpdate,
+                            CreditLimit: this.detailResult[0][12]
+                        }
+                        fetch(`${window.origin}/endpoint3`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify(data)
+                        })
+                        .then(response => {
+                            if (response.status !== 200) {
+                                console.log('Response failed.')
+                                return ;
+                            }
+                            response.json().then (data => {
+                                console.log(data)
+                                this.input = ""
+                                this.searchData()
+                                this.detailResult[0][3] = this.FnameUpdate
+                                this.detailResult[0][2] = this.LnameUpdate
+                                this.FnameUpdate=""
+                                this.LnameUpdate=""
+                                this.showTable = false
+                                this.showDetailsView = true
+                            })
+                        })
+                    }
+                }
+            },
+            mounted: function() {
+                this.searchData()
+            }
+        })
+        app.mount('#app')
+    </script>
+    <style>
+        table {
+          font-family: arial, sans-serif;
+          border-collapse: collapse;
+          width: 80%;
+          margin: auto;
+        }
+        
+        td, th {
+          border: 1px solid #dddddd;
+          text-align: left;
+          padding: 8px;
+        }
+        
+        tr:nth-child(even) {
+          background-color: #dddddd;
+        }
+
+        #title {
+            text-align: center;
+        }
+        #search {
+            width: 50%;
+            float: left;
+        }
+        #navButtons {
+            width: 50%;
+            float: right;
+        }
+        .highlight {
+            color: blue;
+            background-color: #F0FFFF;
+        }
+    </style>
+</body>
+</html>
+
+
